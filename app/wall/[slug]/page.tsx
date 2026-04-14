@@ -10,12 +10,13 @@ export default async function WallPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug);
 
   // 1. 담벼락 정보 조회
   const { data: wall, error: wallError } = await supabase
     .from('walls')
     .select('*')
-    .eq('slug', slug)
+    .eq('slug', decodedSlug)
     .single();
 
   if (wallError || !wall) {

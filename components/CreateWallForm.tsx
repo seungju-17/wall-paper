@@ -65,7 +65,7 @@ export const CreateWallForm = () => {
       if (existingWall) {
         // 이미 존재한다면 비밀번호 확인
         if (existingWall.password === formData.password) {
-          router.push(`/wall/${slug}`);
+          router.push(`/wall/${encodeURIComponent(slug)}`);
           return;
         } else {
           router.push(`/error?msg=${encodeURIComponent('이미 존재하는 담벼락입니다. 비밀번호가 틀렸거나 다른 이름을 사용해주세요.')}`);
@@ -85,7 +85,7 @@ export const CreateWallForm = () => {
 
       if (insertError) throw insertError;
 
-      router.push(`/wall/${slug}`);
+      router.push(`/wall/${encodeURIComponent(slug)}`);
     } catch (error: any) {
       console.error('Error:', error.message);
       router.push(`/error?msg=${encodeURIComponent('서버 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')}`);
