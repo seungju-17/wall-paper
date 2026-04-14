@@ -8,7 +8,7 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  children: React.AntonNode;
+  children: React.ReactNode;
 }
 
 export const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
