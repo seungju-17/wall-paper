@@ -34,16 +34,29 @@ export const CreateWallForm = () => {
     e.preventDefault();
     setLoading(true);
 
+    // 유효성 검사 추가
+    if (formData.title.trim().length < 2) {
+      router.push(`/error?msg=${encodeURIComponent('담벼락 이름은 최소 2자 이상이어야 합니다.')}`);
+      setLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 4) {
+      router.push(`/error?msg=${encodeURIComponent('비밀번호는 최소 4자 이상으로 설정해주세요.')}`);
+      setLoading(false);
+      return;
+    }
+
     const slug = generateSlug(formData.title);
     if (!slug) {
-      alert('유효한 담벼락 이름을 입력해주세요.');
+      router.push(`/error?msg=${encodeURIComponent('유효한 담벼락 이름을 입력해주세요. 특수문자는 사용할 수 없습니다.')}`);
       setLoading(false);
       return;
     }
 
     try {
       // 1. 기존 담벼락 존재 여부 확인 (Login 역할)
-      const { data: existingWall, error: fetchError } = await supabase
+      const { data: existingWall } = await supabase
         .from('walls')
         .select('*')
         .eq('slug', slug)
@@ -55,7 +68,7 @@ export const CreateWallForm = () => {
           router.push(`/wall/${slug}`);
           return;
         } else {
-          alert('이미 존재하는 담벼락입니다. 비밀번호가 틀렸거나 다른 이름을 사용해주세요.');
+          router.push(`/error?msg=${encodeURIComponent('이미 존재하는 담벼락입니다. 비밀번호가 틀렸거나 다른 이름을 사용해주세요.')}`);
           setLoading(false);
           return;
         }
@@ -75,15 +88,15 @@ export const CreateWallForm = () => {
       router.push(`/wall/${slug}`);
     } catch (error: any) {
       console.error('Error:', error.message);
-      alert('처리 중 오류가 발생했습니다.');
+      router.push(`/error?msg=${encodeURIComponent('서버 통신 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-white/80 backdrop-blur-md p-10 rounded-[2.5rem] shadow-2xl border border-white/50 max-w-md w-full animate-fade-in">
-      <div className="space-y-2 text-left">
+    <form onSubmit={handleSubmit} className="space-y-6 bg-white/80 backdrop-blur-md p-10 rounded-[2.5rem] shadow-2xl border border-white/50 max-w-md w-full animate-fade-in text-left">
+      <div className="space-y-2">
         <label className="text-sm font-semibold text-gray-500 ml-1">담벼락 이름</label>
         <input
           required
@@ -94,9 +107,10 @@ export const CreateWallForm = () => {
           onChange={handleChange}
           className="w-full px-6 py-4 rounded-2xl bg-white border border-gray-100 focus:ring-4 focus:ring-pastel-yellow/30 transition-all outline-none text-lg"
         />
+        <p className="text-xs text-gray-400 ml-1">📍 한글/영문/숫자 2자 이상</p>
       </div>
 
-      <div className="space-y-2 text-left">
+      <div className="space-y-2">
         <label className="text-sm font-semibold text-gray-500 ml-1">비밀번호</label>
         <input
           required
@@ -107,6 +121,7 @@ export const CreateWallForm = () => {
           onChange={handleChange}
           className="w-full px-6 py-4 rounded-2xl bg-white border border-gray-100 focus:ring-4 focus:ring-pastel-yellow/30 transition-all outline-none text-lg"
         />
+        <p className="text-xs text-gray-400 ml-1">🔒 4자 이상의 비밀번호 (입장 시 필요해요!)</p>
       </div>
 
       <div className="pt-2">
@@ -115,7 +130,7 @@ export const CreateWallForm = () => {
         </Button>
       </div>
 
-      <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+      <p className="text-xs text-gray-400 mt-4 leading-relaxed text-center">
         같은 이름과 비밀번호를 입력하면 <br />
         언제든 다시 담벼락으로 들어올 수 있어요.
       </p>
