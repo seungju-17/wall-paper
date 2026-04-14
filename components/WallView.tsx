@@ -43,13 +43,17 @@ export default function WallView({ wall, initialMemos }: WallViewProps) {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'memos',
           filter: `wall_id=eq.${wall.id}`,
         },
         (payload) => {
-          setMemos((prev) => [payload.new, ...prev]);
+          if (payload.eventType === 'INSERT') {
+            setMemos((prev) => [payload.new as any, ...prev]);
+          } else if (payload.eventType === 'DELETE') {
+            setMemos((prev) => prev.filter((m) => m.id !== payload.old.id));
+          }
         }
       )
       .subscribe();
@@ -112,6 +116,25 @@ export default function WallView({ wall, initialMemos }: WallViewProps) {
     }
   };
 
+  const handleDeleteMemo = async (memoId: string) => {
+    if (!window.confirm('정말로 이 낙서를 삭제하시겠습니까?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('memos')
+        .delete()
+        .eq('id', memoId);
+        
+      if (error) throw error;
+      
+      // 실시간 구독을 통해 자동 반영되지만, 즉시 반영되도록 로컬 상태 업데이트
+      setMemos(memos.filter(m => m.id !== memoId));
+    } catch (error) {
+      console.error('Error deleting memo:', error);
+      alert('낙서를 지우는 데 실패했습니다. (메모 삭제 권한이 설정되지 않았을 수 있습니다.)');
+    }
+  };
+
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
     alert('담벼락 주소가 복사되었습니다.');
@@ -166,6 +189,8 @@ export default function WallView({ wall, initialMemos }: WallViewProps) {
                 color={memo.color}
                 createdAt={memo.created_at}
                 index={index}
+                isAuthorized={isAuthorized}
+                onDelete={() => handleDeleteMemo(memo.id)}
               />
             ))}
           </div>
