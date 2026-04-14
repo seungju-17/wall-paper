@@ -10,7 +10,6 @@ export const CreateWallForm = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
-    slug: '',
     password: '',
   });
 
@@ -18,7 +17,7 @@ export const CreateWallForm = () => {
     return title
       .toLowerCase()
       .trim()
-      .replace(/[^\w\s-]/g, '')
+      .replace(/[^\uAC00-\uD7A3\w\s-]/g, '') // 한글 및 영숫자 허용
       .replace(/[\s_-]+/g, '-')
       .replace(/^-+|-+$/g, '');
   };
@@ -28,7 +27,6 @@ export const CreateWallForm = () => {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
-      ...(name === 'title' && !formData.slug ? { slug: generateSlug(value) } : {}),
     }));
   };
 
@@ -36,87 +34,91 @@ export const CreateWallForm = () => {
     e.preventDefault();
     setLoading(true);
 
+    const slug = generateSlug(formData.title);
+    if (!slug) {
+      alert('유효한 담벼락 이름을 입력해주세요.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // 1. 중복 슬러그 체크
-      const { data: existingWall } = await supabase
+      // 1. 기존 담벼락 존재 여부 확인 (Login 역할)
+      const { data: existingWall, error: fetchError } = await supabase
         .from('walls')
-        .select('slug')
-        .eq('slug', formData.slug)
+        .select('*')
+        .eq('slug', slug)
         .single();
 
       if (existingWall) {
-        alert('이미 존재하는 담벼락 이름입니다. 다른 이름을 사용해주세요.');
-        setLoading(false);
-        return;
+        // 이미 존재한다면 비밀번호 확인
+        if (existingWall.password === formData.password) {
+          router.push(`/wall/${slug}`);
+          return;
+        } else {
+          alert('이미 존재하는 담벼락입니다. 비밀번호가 틀렸거나 다른 이름을 사용해주세요.');
+          setLoading(false);
+          return;
+        }
       }
 
-      // 2. 담벼락 생성
-      const { error } = await supabase.from('walls').insert([
+      // 2. 존재하지 않는다면 새로 생성 (Signup 역할)
+      const { error: insertError } = await supabase.from('walls').insert([
         {
           title: formData.title,
-          slug: formData.slug || generateSlug(formData.title),
-          password: formData.password, // 실제 서비스에서는 해싱 권장
+          slug: slug,
+          password: formData.password,
         },
       ]);
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
-      router.push(`/wall/${formData.slug}`);
+      router.push(`/wall/${slug}`);
     } catch (error: any) {
-      console.error('Error creating wall:', error.message);
-      alert('담벼락 생성 중 오류가 발생했습니다.');
+      console.error('Error:', error.message);
+      alert('처리 중 오류가 발생했습니다.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 bg-white p-8 rounded-3xl shadow-xl border border-gray-100 max-w-md w-full">
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700 ml-1">담벼락 이름</label>
+    <form onSubmit={handleSubmit} className="space-y-6 bg-white/80 backdrop-blur-md p-10 rounded-[2.5rem] shadow-2xl border border-white/50 max-w-md w-full animate-fade-in">
+      <div className="space-y-2 text-left">
+        <label className="text-sm font-semibold text-gray-500 ml-1">담벼락 이름</label>
         <input
           required
           type="text"
           name="title"
-          placeholder="예: 우리들의 졸업 축하"
+          placeholder="가고 싶은 곳 또는 이름"
           value={formData.title}
           onChange={handleChange}
-          className="w-full px-4 py-3 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-gray-200 transition-all outline-none"
+          className="w-full px-6 py-4 rounded-2xl bg-white border border-gray-100 focus:ring-4 focus:ring-pastel-yellow/30 transition-all outline-none text-lg"
         />
       </div>
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700 ml-1">주소 (Slug)</label>
-        <div className="flex items-center bg-gray-50 rounded-2xl px-4 py-3">
-          <span className="text-gray-400 text-sm mr-1">/wall/</span>
-          <input
-            required
-            type="text"
-            name="slug"
-            placeholder="my-wall"
-            value={formData.slug}
-            onChange={handleChange}
-            className="w-full bg-transparent border-none focus:ring-0 outline-none text-sm"
-          />
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium text-gray-700 ml-1">비밀번호</label>
+      <div className="space-y-2 text-left">
+        <label className="text-sm font-semibold text-gray-500 ml-1">비밀번호</label>
         <input
           required
           type="password"
           name="password"
-          placeholder="작성 및 관리용 비밀번호"
+          placeholder="나만의 열쇠"
           value={formData.password}
           onChange={handleChange}
-          className="w-full px-4 py-3 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-gray-200 transition-all outline-none"
+          className="w-full px-6 py-4 rounded-2xl bg-white border border-gray-100 focus:ring-4 focus:ring-pastel-yellow/30 transition-all outline-none text-lg"
         />
       </div>
 
-      <Button type="submit" disabled={loading} className="w-full py-4 text-lg">
-        {loading ? '생성 중...' : '나만의 담벼락 만들기'}
-      </Button>
+      <div className="pt-2">
+        <Button type="submit" disabled={loading} className="w-full py-5 text-xl shadow-lg shadow-black/10">
+          {loading ? '확인 중...' : '시작하기'}
+        </Button>
+      </div>
+
+      <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+        같은 이름과 비밀번호를 입력하면 <br />
+        언제든 다시 담벼락으로 들어올 수 있어요.
+      </p>
     </form>
   );
 };
