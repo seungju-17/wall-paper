@@ -69,6 +69,9 @@ export default function HomeBoard({ initialWalls }: HomeBoardProps) {
       if (error) throw error;
       
       if (wallData.password === password) {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem(`auth_${selectedWall.id}`, 'true');
+        }
         router.push(`/wall/${encodeURIComponent(selectedWall.slug)}`);
       } else {
         alert('비밀번호가 일치하지 않습니다.');
@@ -127,15 +130,19 @@ export default function HomeBoard({ initialWalls }: HomeBoardProps) {
         return;
       }
 
-      const { error: insertError } = await supabase.from('walls').insert([
+      const { data: newWall, error: insertError } = await supabase.from('walls').insert([
         {
           title: newTitle,
           slug: slug,
           password: password,
         },
-      ]);
+      ]).select().single();
 
       if (insertError) throw insertError;
+      
+      if (typeof window !== 'undefined' && newWall) {
+        sessionStorage.setItem(`auth_${newWall.id}`, 'true');
+      }
 
       router.push(`/wall/${encodeURIComponent(slug)}`);
     } catch (error) {

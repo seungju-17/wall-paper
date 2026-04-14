@@ -31,8 +31,13 @@ export default function WallView({ wall, initialMemos }: WallViewProps) {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // 실시간 업데이트 구독
+  // 실시간 업데이트 구독 및 세션 스토리지 인증 확인
   useEffect(() => {
+    // 세션 스토리지에서 인증 여부 확인
+    if (typeof window !== 'undefined' && sessionStorage.getItem(`auth_${wall.id}`) === 'true') {
+      setIsAuthorized(true);
+    }
+
     const channel = supabase
       .channel(`wall-${wall.id}`)
       .on(
@@ -66,6 +71,9 @@ export default function WallView({ wall, initialMemos }: WallViewProps) {
     e.preventDefault();
     if (passwordInput === wall.password) {
       setIsAuthorized(true);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(`auth_${wall.id}`, 'true');
+      }
       setIsPasswordModalOpen(false);
       setIsDoodleModalOpen(true);
       setPasswordInput(''); // 초기화
