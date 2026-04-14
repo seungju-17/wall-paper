@@ -8,6 +8,7 @@ import { MemoForm } from '@/components/MemoForm';
 import { supabase } from '@/lib/supabase';
 import { PenTool, Lock, Share2, Home } from 'lucide-react';
 import Link from 'next/link';
+import { motion } from 'framer-motion';
 
 interface WallViewProps {
   wall: any;
